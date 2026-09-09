@@ -11,9 +11,7 @@ FROM quay.io/keycloak/keycloak:26.3.3
 
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 COPY realm/ /opt/keycloak/data/import/
-COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh
-
-RUN chmod +x /docker-entrypoint.sh
+COPY --chmod=755 scripts/docker-entrypoint.sh /docker-entrypoint.sh
 
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true

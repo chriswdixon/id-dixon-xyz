@@ -40,9 +40,21 @@ if [[ -z "$KC_HOSTNAME" ]]; then
   DOMAIN_JSON="$(railway domain --service "$SERVICE" --port 8080 --json 2>/dev/null || true)"
   if [[ -n "$DOMAIN_JSON" ]]; then
     DOMAIN="$(echo "$DOMAIN_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('domain') or d.get('hostname') or '')" 2>/dev/null || true)"
+    DOMAIN="${DOMAIN#https://}"
+    DOMAIN="${DOMAIN#http://}"
     if [[ -n "$DOMAIN" ]]; then
       KC_HOSTNAME="https://${DOMAIN}"
     fi
+  fi
+fi
+
+if [[ -z "$KC_HOSTNAME" ]]; then
+  DOMAIN_LIST="$(railway domain list --service "$SERVICE" --json 2>/dev/null || true)"
+  if [[ -n "$DOMAIN_LIST" ]]; then
+    DOMAIN="$(echo "$DOMAIN_LIST" | python3 -c "import sys,json; d=json.load(sys.stdin); domains=d.get('domains') or []; print(domains[0]['domain'] if domains else '')" 2>/dev/null || true)"
+    DOMAIN="${DOMAIN#https://}"
+    DOMAIN="${DOMAIN#http://}"
+    [[ -n "$DOMAIN" ]] && KC_HOSTNAME="https://${DOMAIN}"
   fi
 fi
 
@@ -51,9 +63,9 @@ if [[ -z "$KC_HOSTNAME" ]]; then
   exit 1
 fi
 
-if [[ "$KC_HOSTNAME" != http://* && "$KC_HOSTNAME" != https://* ]]; then
-  KC_HOSTNAME="https://${KC_HOSTNAME}"
-fi
+KC_HOSTNAME="${KC_HOSTNAME#https://}"
+KC_HOSTNAME="${KC_HOSTNAME#http://}"
+KC_HOSTNAME="https://${KC_HOSTNAME}"
 
 ADMIN_USER="${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}"
 ADMIN_PASS="${KC_BOOTSTRAP_ADMIN_PASSWORD:-$(openssl rand -base64 24)}"
@@ -73,7 +85,7 @@ DB_REF_NAME='${{'"${POSTGRES_SERVICE}"'.PGDATABASE}}'
 DB_REF_USER='${{'"${POSTGRES_SERVICE}"'.PGUSER}}'
 DB_REF_PASS='${{'"${POSTGRES_SERVICE}"'.PGPASSWORD}}'
 
-railway variable set --service "$SERVICE" "${ENV_FLAGS[@]}" --skip-deploys \
+railway variable set --service "$SERVICE" ${ENV_FLAGS[@]+"${ENV_FLAGS[@]}"} --skip-deploys \
   PORT=9000 \
   KC_DB=postgres \
   "KC_DB_URL=jdbc:postgresql://${DB_REF_DOMAIN}:5432/${DB_REF_NAME}" \
@@ -90,7 +102,7 @@ railway variable set --service "$SERVICE" "${ENV_FLAGS[@]}" --skip-deploys \
 
 echo "" >&2
 echo "Variables set. Redeploying ${SERVICE}..." >&2
-railway redeploy --service "$SERVICE" "${ENV_FLAGS[@]}" -y
+railway redeploy --service "$SERVICE" ${ENV_FLAGS[@]+"${ENV_FLAGS[@]}"} -y
 
 echo "" >&2
 echo "Done." >&2
