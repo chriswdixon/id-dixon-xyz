@@ -2,7 +2,21 @@
 
 Follow [Railway's Keycloak guide](https://docs.railway.com/guides/keycloak-authentication). The most common crash causes are wrong DB URL, wrong healthcheck port, and missing proxy settings.
 
-## 1. Create project
+## 0. Automate with CLI (recommended)
+
+```bash
+brew install railway
+railway login
+cd ~/Documents/GitHub/id-dixon-xyz
+railway link                              # existing project
+./scripts/railway-configure.sh            # sets all vars + redeploys
+```
+
+Or bootstrap a new project: `./scripts/railway-bootstrap.sh`
+
+Full details: [railway-cli-setup.md](./railway-cli-setup.md)
+
+## 1. Create project (manual alternative)
 
 1. [railway.com](https://railway.com) → **New Project → Deploy from GitHub** → `chriswdixon/id-dixon-xyz`
 2. **+ New → Database → PostgreSQL**
