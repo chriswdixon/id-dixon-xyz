@@ -1,69 +1,78 @@
 # Railway deploy — Keycloak @ id.dixon.xyz
 
+Follow [Railway's Keycloak guide](https://docs.railway.com/guides/keycloak-authentication). The most common crash causes are wrong DB URL, wrong healthcheck port, and missing proxy settings.
+
 ## 1. Create project
 
-1. Sign up at [railway.com](https://railway.com) (use $5 trial credit)
-2. **New Project → Deploy from GitHub repo** → `chriswdixon/id-dixon-xyz`
-3. Add **PostgreSQL** to the project
+1. [railway.com](https://railway.com) → **New Project → Deploy from GitHub** → `chriswdixon/id-dixon-xyz`
+2. **+ New → Database → PostgreSQL**
+3. Keycloak service → **Settings → Resources** → set memory to **≥ 1 GB**
 
-## 2. Configure Keycloak service
+## 2. Required variables
 
-In the Keycloak service **Variables**, set:
+In the **Keycloak** service → **Variables**:
 
 | Variable | Value |
 |----------|--------|
-| `KEYCLOAK_ADMIN` | `admin` |
-| `KEYCLOAK_ADMIN_PASSWORD` | (strong secret) |
+| `PORT` | `9000` |
 | `KC_DB` | `postgres` |
-| `KC_DB_URL` | `${{Postgres.DATABASE_URL}}` → convert to JDBC: `jdbc:postgresql://HOST:PORT/railway` |
+| `KC_DB_URL` | `jdbc:postgresql://${{Postgres.RAILWAY_PRIVATE_DOMAIN}}:5432/${{Postgres.PGDATABASE}}` |
 | `KC_DB_USERNAME` | `${{Postgres.PGUSER}}` |
 | `KC_DB_PASSWORD` | `${{Postgres.PGPASSWORD}}` |
-| `KC_HOSTNAME` | `id.dixon.xyz` |
-| `KC_HOSTNAME_STRICT` | `true` |
-| `KC_PROXY` | `edge` |
+| `KC_DB_POOL_MAX_SIZE` | `10` |
+| `KC_BOOTSTRAP_ADMIN_USERNAME` | `admin` |
+| `KC_BOOTSTRAP_ADMIN_PASSWORD` | (strong secret) |
 | `KC_HTTP_ENABLED` | `true` |
+| `KC_PROXY_HEADERS` | `xforwarded` |
+| `KC_PROXY_TRUSTED_ADDRESSES` | `100.64.0.0/10,fd00::/8` |
+| `KC_HEALTH_ENABLED` | `true` |
+| `KC_HOSTNAME` | `https://YOUR-RAILWAY-DOMAIN.up.railway.app` |
 
-Railway Postgres URL is often `postgresql://user:pass@host:port/railway`. Keycloak needs JDBC:
+**Do not use** `KEYCLOAK_ADMIN` (deprecated). Use `KC_BOOTSTRAP_ADMIN_*`.
 
-```
-jdbc:postgresql://HOST:PORT/railway
-```
+**Do not use** `${{Postgres.DATABASE_URL}}` directly — Keycloak needs **JDBC** format (`jdbc:postgresql://...`).
 
-## 3. Custom domain
+**Do not set** `KC_HOSTNAME` to `id.dixon.xyz` without `https://` — use the full URL.
 
-1. Railway service → **Settings → Networking → Custom Domain** → `id.dixon.xyz`
-2. Add DNS CNAME per Railway instructions
-3. Wait for TLS
+## 3. Networking
 
-## 4. First login
+1. **Settings → Networking → Generate Domain** → target port **8080**
+2. Set `KC_HOSTNAME` to that full `https://...` URL and redeploy
+3. Healthcheck path: `/health/ready` (already in `railway.toml`)
 
-1. Open `https://id.dixon.xyz/admin`
-2. Create your user in realm **dixon** (registration is off)
-3. **Clients → wordpress-vip** — update ACS/SLO/entity ID for your VIP site URL
-4. **Identity providers** — add Google/GitHub if desired
-5. **Realm settings → Email** — SMTP for OTP/magic link
+## 4. Custom domain (optional)
 
-## 5. IdP metadata for WordPress
+1. Add custom domain `id.dixon.xyz` → target port **8080**
+2. Update `KC_HOSTNAME` to `https://id.dixon.xyz` and redeploy
+
+## 5. Verify deploy
+
+Check **Deploy Logs** for:
+
+- `ERROR: KC_DB_URL is not set` → fix JDBC URL (see above)
+- `Port(s) already bound: 8080` → remove duplicate `PORT=8080`; use `PORT=9000` only
+- `QuarkusBindException` / OOM → increase memory to 1–2 GB
+- `Failed to obtain JDBC connection` → Postgres not reachable; use `RAILWAY_PRIVATE_DOMAIN` not public PGHOST
+
+When healthy:
 
 ```bash
-curl -o keycloak-idp.xml \
-  'https://id.dixon.xyz/realms/dixon/protocol/saml/descriptor'
+curl -sS "https://YOUR-DOMAIN/health/ready"
+curl -sS "https://YOUR-DOMAIN/realms/dixon/protocol/saml/descriptor" | head
 ```
 
-Upload to VIP: `.private/sso/keycloak-idp.xml`
+Admin console: `https://YOUR-DOMAIN/admin`
 
-## 6. Save money — stop when done
+## 6. Realm + WordPress client
 
-Railway bills per second while services run:
+1. Realm **dixon** is imported on first boot
+2. **Clients → wordpress-vip** — set ACS/SLO/entity ID for your VIP site
+3. Create your user (registration is off)
 
-- **Stop** Keycloak + Postgres in Railway dashboard when not testing
-- Cold start ~30–90s after restart
-- Use **Okta** for daily plugin work without starting Railway
+## 7. Save money
 
-## 7. WordPress SP URLs (wp-simple-saml)
+Stop Keycloak + Postgres when not testing. Use Okta for day-to-day plugin work.
 
-| Setting | Value |
-|---------|--------|
-| Entity ID | `https://your-vip-site.com/` (trailing slash required) |
-| ACS URL | `https://your-vip-site.com/sso/verify` |
-| SLO URL | `https://your-vip-site.com/sso/logout` |
+## Troubleshooting
+
+See [railway-troubleshooting.md](./railway-troubleshooting.md).

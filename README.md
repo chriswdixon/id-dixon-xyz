@@ -34,7 +34,7 @@ export WP_SP_ENTITY_ID=https://your-vip-site.com/
 
 ## Railway deploy
 
-See [docs/runbooks/railway-deploy.md](docs/runbooks/railway-deploy.md).
+See [docs/runbooks/railway-deploy.md](docs/runbooks/railway-deploy.md). If deploy crashes, see [railway-troubleshooting.md](docs/runbooks/railway-troubleshooting.md).
 
 1. Create Railway project from this repo
 2. Add PostgreSQL plugin

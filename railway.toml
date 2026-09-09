@@ -3,7 +3,10 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
+# Keycloak health is on management port 9000 — also set PORT=9000 in Railway variables.
 healthcheckPath = "/health/ready"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
+restartPolicyMaxRetries = 5
+
+# Recommend ≥1GB RAM for Keycloak on Railway (Settings → Resources).
