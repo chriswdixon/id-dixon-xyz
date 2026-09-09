@@ -1,0 +1,11 @@
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+.private/
+idp-metadata/
+.DS_Store
+node_modules/
+.railway/
