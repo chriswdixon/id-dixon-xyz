@@ -8,7 +8,8 @@ COPY --chmod=755 scripts/docker-entrypoint.sh /docker-entrypoint.sh
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
 ENV KC_HTTP_ENABLED=true
-ENV JAVA_OPTS_APPEND="-XX:MaxRAMPercentage=70.0"
+# Trial/hobby Railway instances are capped at 1 GB — keep heap conservative.
+ENV JAVA_OPTS_APPEND="-Xms256m -Xmx640m"
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["start", "--import-realm"]
